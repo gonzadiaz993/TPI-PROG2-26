@@ -1,3 +1,5 @@
+import csv
+import os
 from entidades import Usuario
 from enums import Rol
 from excepciones import (
@@ -5,17 +7,79 @@ from excepciones import (
     DuplicadoError,
     EntidadNoEncontradaError,
     OperacionNoPermitidaError,
+    DatoInvalidoError,
 )
+
+ARCHIVO_CSV = "usuarios.csv"
 
 
 class UsuarioServicio:
     def __init__(self) -> None:
         self.__usuarios: list[Usuario] = []
+        self._cargar_desde_csv()
+
+    def _cargar_desde_csv(self) -> None:
+        """Carga los usuarios desde el archivo CSV al iniciar el servicio."""
+        if not os.path.exists(ARCHIVO_CSV):
+            return
+        
+        try:
+            with open(ARCHIVO_CSV, mode="r", encoding="utf-8") as archivo:
+                lector = csv.DictReader(archivo)
+                for fila in lector:
+                    # Evitamos duplicados si ya estuvieran en memoria
+                    mail = fila["mail"]
+                    if not self._mail_en_uso(mail):
+                        # Reconstruimos el usuario con su rol y contraseña guardados
+                        rol = Rol[fila["rol"]]
+                        usuario = Usuario(
+                            nombre=fila["nombre"],
+                            apellido=fila["apellido"],
+                            mail=mail,
+                            celular=fila["celular"],
+                            contrasenia=fila["contrasenia"],
+                            rol=rol
+                        )
+                        usuario.eliminado = fila["eliminado"] == "True"
+                        self.__usuarios.append(usuario)
+        except Exception as e:
+            print(f"Aviso: No se pudo cargar el archivo de usuarios: {e}")
+
+    def _guardar_en_csv(self) -> None:
+        """Guarda toda la lista actual de usuarios en el archivo CSV."""
+        try:
+            with open(ARCHIVO_CSV, mode="w", newline="", encoding="utf-8") as archivo:
+                campos = ["nombre", "apellido", "mail", "celular", "contrasenia", "rol", "eliminado"]
+                escritor = csv.DictWriter(archivo, fieldnames=campos)
+                escritor.writeheader()
+                for u in self.__usuarios:
+                    escritor.writerow({
+                        "nombre": u.nombre,
+                        "apellido": u.apellido,
+                        "mail": u.mail,
+                        "celular": u.celular,
+                        "contrasenia": u._Usuario__contrasenia,  # Acceso controlado a la contraseña interna
+                        "rol": u.rol.name,
+                        "eliminado": str(u.eliminado)
+                    })
+        except Exception as e:
+            print(f"Error al guardar en el CSV: {e}")
 
     def _mail_en_uso(self, mail: str, excluir_id: int | None = None) -> bool:
-        """Recorre toda la colección (incluye eliminados, porque siguen en ella)."""
+        """Comprueba si el mail ya está registrado (case-insensitive)."""
         buscado = mail.strip().lower()
         return any(u.mail == buscado and u.id != excluir_id for u in self.__usuarios)
+
+    def _validar_mail_correcto(self, mail: str) -> None:
+        """Validación estricta del formato del correo electrónico."""
+        mail_limpio = mail.strip()
+        if not mail_limpio or "@" not in mail_limpio or "." not in mail_limpio:
+            raise DatoInvalidoError("El formato del mail es incorrecto (debe contener '@' y '.')")
+        
+        # Validación extra opcional: que no tenga espacios internos y tenga algo antes/después del @ y del .
+        partes = mail_limpio.split("@")
+        if len(partes) != 2 or not partes[0] or not partes[1] or "." not in partes[1]:
+            raise DatoInvalidoError("El formato del mail no es válido")
 
     def crear(
         self,
@@ -26,10 +90,20 @@ class UsuarioServicio:
         contrasenia: str,
         rol: Rol,
     ) -> Usuario:
+        # 1. Validar formato correcto del mail antes de hacer nada
+        self._validar_mail_correcto(mail)
+
+        # 2. Controlar duplicados (tanto en memoria como cargados del CSV)
         if self._mail_en_uso(mail):
-            raise DuplicadoError(f"El mail '{mail.strip()}' ya está registrado")
+            raise DuplicadoError(f"El mail '{mail.strip()}' ya está registrado en el sistema")
+
+        # 3. Crear instancia
         usuario = Usuario(nombre, apellido, mail, celular, contrasenia, rol)
         self.__usuarios.append(usuario)
+
+        # 4. Actualizar el archivo CSV de manera persistente
+        self._guardar_en_csv()
+
         return usuario
 
     def listar(self) -> list[Usuario]:
@@ -51,10 +125,12 @@ class UsuarioServicio:
         contrasenia: str | None = None,
         rol: Rol | None = None,
     ) -> Usuario:
-        """Los parámetros en None conservan el valor anterior."""
         usuario = self.obtener(id_usuario)
-        if mail is not None and self._mail_en_uso(mail, usuario.id):
-            raise DuplicadoError(f"El mail '{mail.strip()}' ya está registrado")
+        
+        if mail is not None:
+            self._validar_mail_correcto(mail)
+            if self._mail_en_uso(mail, usuario.id):
+                raise DuplicadoError(f"El mail '{mail.strip()}' ya está registrado")
 
         original = (
             usuario.nombre, usuario.apellido, usuario.mail, usuario.celular, usuario.rol
@@ -70,14 +146,15 @@ class UsuarioServicio:
                 usuario.celular = celular
             if rol is not None:
                 usuario.rol = rol
-            # La contraseña no se puede leer para respaldarla, por eso va última:
-            # si falla, su setter valida antes de asignar y el resto se restaura.
             if contrasenia is not None:
                 usuario.contrasenia = contrasenia
         except Exception:
             (usuario.nombre, usuario.apellido, usuario.mail,
              usuario.celular, usuario.rol) = original
             raise
+
+        # Guardamos cambios en el CSV
+        self._guardar_en_csv()
         return usuario
 
     def eliminar(self, id_usuario: int, usuario_sesion: Usuario) -> None:
@@ -87,9 +164,10 @@ class UsuarioServicio:
                 "Un administrador no puede eliminarse a sí mismo mientras tiene la sesión iniciada"
             )
         usuario.eliminado = True
+        self._guardar_en_csv()
 
     def autenticar(self, mail: str, contrasenia: str) -> Usuario:
-        mensaje = "Mail o contraseña incorrectos"  # mismo mensaje en los tres casos
+        mensaje = "Mail o contraseña incorrectos"
         buscado = mail.strip().lower()
         for u in self.__usuarios:
             if u.mail == buscado:
