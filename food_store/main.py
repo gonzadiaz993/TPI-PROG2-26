@@ -1,3 +1,5 @@
+import questionary
+from questionary import Style
 from enums import Rol, FormaPago
 from excepciones import FoodStoreError, CredencialesInvalidasError
 from servicios import CategoriaServicio, ProductoServicio, UsuarioServicio, PedidoServicio
@@ -7,7 +9,7 @@ def inicializar_sistema_base(
     usuarios: UsuarioServicio,
     categorias: CategoriaServicio,
     productos: ProductoServicio
-) -> None:
+) -> None:  
     """
     Verifica si existen usuarios cargados (desde el CSV). 
     Si está completamente vacío (primer inicio), crea el administrador por defecto.
@@ -55,144 +57,170 @@ def inicializar_sistema_base(
 
 def mostrar_menu_administrador(usuario_actual, categorias, productos, usuarios, pedidos) -> bool:
     while True:
-        print(f"\n=== FOOD STORE ADMINISTRADOR ({usuario_actual.nombre} {usuario_actual.apellido}) ===")
-        print("1. Gestionar Categorías")
-        print("2. Gestionar Productos")
-        print("3. Ver Usuarios Registrados")
-        print("4. Gestionar Pedidos")
-        print("5. Registrar nuevo usuar io")
-        print("9. Cerrar sesión")
-        print("0. Salir")
-        
-        opcion = input("Seleccione una opción: ").strip()
-        
-        if opcion == "1":
-            print("\n--- CATEGORÍAS ---")
-            print("1. Listar | 2. Crear | 0. Volver")
-            sub = input("Opción: ").strip()
-            if sub == "1":
-                cats = categorias.listar()
-                if not cats:
-                    print("No hay categorías cargadas.")
-                for c in cats:
-                    print(c)
-            elif sub == "2":
+        admin_style = Style([
+            ('pointer', 'cyan bold'),
+            ('highlighted', 'bg:#7c3aed #ffffff bold'),
+            ('text', '#9ca3af'),
+            ('question', 'cyan bold'),
+        ])
+
+        opcion_seleccionada = questionary.select(
+            message = f"\n=== FOOD STORE ADMINISTRADOR ({usuario_actual.nombre} {usuario_actual.apellido}) ===",
+            choices = [
+                " 1. Gestionar Categorías",
+                " 2. Gestionar Productos",
+                " 3. Ver Usuarios Registrados",
+                " 4. Gestionar Pedidos",
+                " 5. Registrar nuevo usuario",
+                " 9. Cerrar sesión",
+                " 0. Salir"
+            ],
+            style=admin_style,
+            pointer='➔'
+        ).ask()
+
+
+        match opcion_seleccionada:
+            case " 1. Gestionar Categorías":
+                print("\n--- CATEGORÍAS ---")
+                print("1. Listar | 2. Crear | 0. Volver")
+                sub = input("Opción: ").strip()
+                if sub == "1":
+                    cats = categorias.listar()
+                    if not cats:
+                        print("No hay categorías cargadas.")
+                    for c in cats:
+                        print(c)
+                elif sub == "2":
+                    try:
+                        nombre = input("Nombre: ")
+                        desc = input("Descripción: ")
+                        nueva = categorias.crear(nombre, desc)
+                        print(f"¡Categoría creada con éxito! ID: {nueva.id}")
+                    except FoodStoreError as e:
+                        print(f"Error de negocio: {e}")
+
+            case " 2. Gestionar Productos":
+                print("\n--- PRODUCTOS ---")
+                print("1. Listar | 2. Crear | 0. Volver")
+                sub = input("Opción: ").strip()
+                if sub == "1":
+                    prods = productos.listar()
+                    if not prods:
+                        print("No hay productos cargados.")
+                    for p in prods:
+                        print(p)
+                elif sub == "2":
+                    try:
+                        nombre = input("Nombre: ")
+                        desc = input("Descripción: ")
+                        precio = float(input("Precio: "))
+                        stock = int(input("Stock: "))
+                        imagen = input("Imagen (opcional): ")
+                        disp_str = input("¿Disponible? (s/n): ").strip().lower()
+                        disponible = disp_str == 's'
+                        
+                        print("\nCategorías disponibles:")
+                        for c in categorias.listar():
+                            print(f"ID {c.id}: {c.nombre}")
+                        id_cat = int(input("ID de Categoría: "))
+                        
+                        p_nuevo = productos.crear(nombre, desc, precio, stock, imagen, disponible, id_cat)
+                        print(f"¡Producto creado con éxito! ID: {p_nuevo.id}")
+                    except (ValueError, FoodStoreError) as e:
+                        print(f"Error al crear producto: {e}")
+
+            case " 3. Ver Usuarios Registrados":
+                print("\n--- USUARIOS REGISTRADOS (DESDE CSV) ---")
+                for u in usuarios.listar():
+                    print(u)
+            case " 4. Gestionar Pedidos":
+                print("\n--- PEDIDOS ---")
+                print("1. Listar | 0. Volver")
+                sub = input("Opción: ").strip()
+                if sub == "1":
+                    peds = pedidos.listar()
+                    if not peds:
+                        print("No hay pedidos registrados.")
+                    for p in peds:
+                        print(p)
+            case " 5. Registrar nuevo usuario":
+                print("\n--- REGISTRAR NUEVO USUARIO ---")
                 try:
-                    nombre = input("Nombre: ")
-                    desc = input("Descripción: ")
-                    nueva = categorias.crear(nombre, desc)
-                    print(f"¡Categoría creada con éxito! ID: {nueva.id}")
+                    nombre = input("Nombre: ").strip()
+                    apellido = input("Apellido: ").strip()
+                    mail = input("Mail: ").strip()
+                    celular = input("Celular: ").strip()
+                    contrasenia = input("Contraseña: ").strip()
+                    
+                    print("\nSeleccione el rol:")
+                    print("1. Administrador")
+                    print("2. Usuario / Cliente")
+                    op_rol = input("Opción (1/2): ").strip()
+                    
+                    rol = Rol.ADMIN if op_rol == "1" else Rol.USUARIO
+                    
+                    nuevo_usuario = usuarios.crear(nombre, apellido, mail, celular, contrasenia, rol)
+                    print(f"¡Usuario registrado con éxito! ID: {nuevo_usuario.id} | {nuevo_usuario.mail} [{nuevo_usuario.rol.name}]")
                 except FoodStoreError as e:
-                    print(f"Error de negocio: {e}")
-        elif opcion == "2":
-            print("\n--- PRODUCTOS ---")
-            print("1. Listar | 2. Crear | 0. Volver")
-            sub = input("Opción: ").strip()
-            if sub == "1":
-                prods = productos.listar()
-                if not prods:
-                    print("No hay productos cargados.")
-                for p in prods:
-                    print(p)
-            elif sub == "2":
-                try:
-                    nombre = input("Nombre: ")
-                    desc = input("Descripción: ")
-                    precio = float(input("Precio: "))
-                    stock = int(input("Stock: "))
-                    imagen = input("Imagen (opcional): ")
-                    disp_str = input("¿Disponible? (s/n): ").strip().lower()
-                    disponible = disp_str == 's'
-                    
-                    print("\nCategorías disponibles:")
-                    for c in categorias.listar():
-                        print(f"ID {c.id}: {c.nombre}")
-                    id_cat = int(input("ID de Categoría: "))
-                    
-                    p_nuevo = productos.crear(nombre, desc, precio, stock, imagen, disponible, id_cat)
-                    print(f"¡Producto creado con éxito! ID: {p_nuevo.id}")
-                except (ValueError, FoodStoreError) as e:
-                    print(f"Error al crear producto: {e}")
-        elif opcion == "3":
-            print("\n--- USUARIOS REGISTRADOS (DESDE CSV) ---")
-            for u in usuarios.listar():
-                print(u)
-        elif opcion == "4":
-            print("\n--- PEDIDOS ---")
-            print("1. Listar | 0. Volver")
-            sub = input("Opción: ").strip()
-            if sub == "1":
-                peds = pedidos.listar()
-                if not peds:
-                    print("No hay pedidos registrados.")
-                for p in peds:
-                    print(p)
-        elif opcion == "5":
-            print("\n--- REGISTRAR NUEVO USUARIO ---")
-            try:
-                nombre = input("Nombre: ").strip()
-                apellido = input("Apellido: ").strip()
-                mail = input("Mail: ").strip()
-                celular = input("Celular: ").strip()
-                contrasenia = input("Contraseña: ").strip()
-                
-                print("\nSeleccione el rol:")
-                print("1. Administrador")
-                print("2. Usuario / Cliente")
-                op_rol = input("Opción (1/2): ").strip()
-                
-                rol = Rol.ADMIN if op_rol == "1" else Rol.USUARIO
-                
-                nuevo_usuario = usuarios.crear(nombre, apellido, mail, celular, contrasenia, rol)
-                print(f"¡Usuario registrado con éxito! ID: {nuevo_usuario.id} | {nuevo_usuario.mail} [{nuevo_usuario.rol.name}]")
-            except FoodStoreError as e:
-                print(f"Error de validación: {e}")
-            except Exception as e:
-                print(f"Ocurrió un error inesperado: {e}")
-        elif opcion == "9":
-            print("Cerrando sesión...")
-            return True
-        elif opcion == "0":
-            print("Saliendo del sistema...")
-            return False
-        else:
-            print("Opción inválida.")
+                    print(f"Error de validación: {e}")
+                except Exception as e:
+                    print(f"Ocurrió un error inesperado: {e}")
+            case " 9. Cerrar sesión":
+                print("Cerrando sesión...")
+                return True
+            case " 0. Salir":
+                print("Saliendo del sistema...")
+                return False
+
+
 
 
 def mostrar_menu_cliente(usuario_actual, categorias, productos, pedidos) -> bool:
     while True:
-        print(f"\n=== FOOD STORE CLIENTE ({usuario_actual.nombre} {usuario_actual.apellido}) ===")
-        print("1. Ver categorías")
-        print("2. Ver productos disponibles")
-        print("3. Mis pedidos")
-        print("4. Mis datos")
-        print("9. Cerrar sesión")
-        print("0. Salir")
+        client_style = Style([
+            ('pointer', 'green bold'),
+            ('highlighted', 'bg:#0284c7 fg:white bold'),
+            ('text', '#9ca3af'),
+            ('question', 'green bold'),
+        ])
+
+        opcion_seleccionada = questionary.select(
+            message = f"\n=== FOOD STORE CLIENTE ({usuario_actual.nombre} {usuario_actual.apellido}) ===",
+            choices = [
+                " 1. Ver categorías",
+                " 2. Ver productos disponibles",
+                " 3. Mis pedidos",
+                " 4. Mis datos",
+                " 9. Cerrar sesión",
+                " 0. Salir",
+            ],
+            style=client_style,
+            pointer='➔'
+        ).ask()
         
-        opcion = input("Seleccione una opción: ").strip()
-        
-        if opcion == "1":
-            for c in categorias.listar():
-                print(c)
-        elif opcion == "2":
-            for p in productos.listar_disponibles():
-                print(p)
-        elif opcion == "3":
-            mis_peds = pedidos.listar_por_usuario(usuario_actual)
-            if not mis_peds:
-                print("No tenés pedidos registrados.")
-            for p in mis_peds:
-                print(p)
-        elif opcion == "4":
-            print(f"Datos de tu cuenta: {usuario_actual}")
-        elif opcion == "9":
-            print("Cerrando sesión...")
-            return True
-        elif opcion == "0":
-            print("Saliendo del sistema...")
-            return False
-        else:
-            print("Opción inválida.")
+        opcion = opcion_seleccionada
+        match opcion:
+            case " 1. Ver categorías":
+                for c in categorias.listar():
+                    print(c)
+            case " 2. Ver productos disponibles":
+                for p in productos.listar_disponibles():
+                    print(p)
+            case " 3. Mis pedidos":
+                mis_peds = pedidos.listar_por_usuario(usuario_actual)
+                if not mis_peds:
+                    print("No tenés pedidos registrados.")
+                for p in mis_peds:
+                    print(p)
+            case " 4. Mis datos":
+                print(f"Datos de tu cuenta: {usuario_actual}")
+            case " 9. Cerrar sesión":
+                print("Cerrando sesión...")
+                return True
+            case " 0. Salir":
+                print("Saliendo del sistema...")
+                return False
 
 
 def main() -> None:
