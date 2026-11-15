@@ -1,5 +1,6 @@
 import csv
 import os
+from pathlib import Path
 from entidades import Usuario
 from enums import Rol
 from excepciones import (
@@ -10,21 +11,24 @@ from excepciones import (
     DatoInvalidoError,
 )
 
-ARCHIVO_CSV = "usuarios.csv"
+# Ruta fija (food_store/usuarios.csv), sin depender del directorio desde donde se ejecute
+ARCHIVO_CSV: Path = Path(__file__).resolve().parent.parent / "usuarios.csv"
 
 
 class UsuarioServicio:
-    def __init__(self) -> None:
+    def __init__(self, archivo: Path | None = ARCHIVO_CSV) -> None:
+        """archivo=None -> todo queda solo en memoria (útil para pruebas.py)."""
+        self.__archivo: Path | None = archivo
         self.__usuarios: list[Usuario] = []
         self._cargar_desde_csv()
 
     def _cargar_desde_csv(self) -> None:
         """Carga los usuarios desde el archivo CSV al iniciar el servicio."""
-        if not os.path.exists(ARCHIVO_CSV):
+        if self.__archivo is None or not os.path.exists(self.__archivo):
             return
         
         try:
-            with open(ARCHIVO_CSV, mode="r", encoding="utf-8") as archivo:
+            with open(self.__archivo, mode="r", encoding="utf-8") as archivo:
                 lector = csv.DictReader(archivo)
                 for fila in lector:
                     # Evitamos duplicados si ya estuvieran en memoria
@@ -47,8 +51,10 @@ class UsuarioServicio:
 
     def _guardar_en_csv(self) -> None:
         """Guarda toda la lista actual de usuarios en el archivo CSV."""
+        if self.__archivo is None:
+            return
         try:
-            with open(ARCHIVO_CSV, mode="w", newline="", encoding="utf-8") as archivo:
+            with open(self.__archivo, mode="w", newline="", encoding="utf-8") as archivo:
                 campos = ["nombre", "apellido", "mail", "celular", "contrasenia", "rol", "eliminado"]
                 escritor = csv.DictWriter(archivo, fieldnames=campos)
                 escritor.writeheader()

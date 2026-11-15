@@ -31,7 +31,7 @@ from servicios import CategoriaServicio, ProductoServicio, UsuarioServicio, Pedi
 
 cats = CategoriaServicio()
 prods = ProductoServicio(cats)
-users = UsuarioServicio()
+users = UsuarioServicio(archivo=None)  # solo en memoria: no toca usuarios.csv
 pedidos = PedidoServicio(users, prods)
 
 admin = users.crear("Ana", "Pérez", "admin@foodstore.com", "261555", "admin123", Rol.ADMIN)
