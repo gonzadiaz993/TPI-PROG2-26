@@ -50,4 +50,3 @@ food_store/
 ## Enlaces
 
 - Video de demostración: 
-- Informe PDF: 
