@@ -1,3 +1,4 @@
 nombre,apellido,mail,celular,contrasenia,rol,eliminado
 Ana,Pérez,admin@foodstore.com,2615550000,admin123,ADMIN,False
 juan,perez,juan@foodstore.com,2615378932,123,USUARIO,False
+Maria,Lopez,maria@foodstore.com,27812362,123,USUARIO,True

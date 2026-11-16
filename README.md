@@ -1,8 +1,9 @@
+# integrantes 
+# - Astargo Leonardo Legajo: 54195
+# - Diaz Gonzalo Legajo: 54212
 # Food Store – TPI Programación II (UTN – TUP a Distancia)
 
 Sistema de gestión de pedidos de comida por consola, hecho con POO en Python.
-
-**Integrantes:** Astargo Leonardo · Diaz Gonzalo
 
 ## Requisitos
 
@@ -28,7 +29,7 @@ python pruebas.py
 | Rol | Mail | Contraseña |
 |---|---|---|
 | ADMIN | admin@foodstore.com | admin123 |
-| USUARIO | juan@foodstore.com | juan123 |
+| USUARIO | juan@foodstore.com | 123 |
 
 Los usuarios se guardan en `food_store/usuarios.csv` (categorías, productos y pedidos viven en memoria).
 Para reiniciar los usuarios, borrar ese archivo: se vuelve a crear con los datos iniciales.
@@ -48,5 +49,5 @@ food_store/
 
 ## Enlaces
 
-- Video de demostración: _(pegar link con permisos públicos)_
-- Informe PDF: _(pegar link o indicar el archivo subido a la raíz)_
+- Video de demostración: 
+- Informe PDF: 
