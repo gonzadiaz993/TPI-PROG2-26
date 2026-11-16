@@ -49,4 +49,4 @@ food_store/
 
 ## Enlaces
 
-- Video de demostración: 
+- Video de demostración: https://youtu.be/ABu342zW6KM
