@@ -49,5 +49,5 @@ food_store/
 
 ## Enlaces
 
-- Video de demostración: https://www.youtube.com/watch?v=OGbabwdAGV4
+- Video de demostración: https://youtu.be/OGbabwdAGV4?si=VdWIcgREgYcZKAZn
 - Repositorio GitHub: https://github.com/gonzadiaz993/TPI-PROG2-26.git
